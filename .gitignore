@@ -1,0 +1,7 @@
+node_modules
+# .gitignore
+serviceAccountKey.json
+.env
+python_backend/myenv
+python_backend/__pycache__/
+11
