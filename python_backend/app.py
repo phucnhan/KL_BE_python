@@ -8,6 +8,28 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # Allow CORS for all origins
 
+# Đảm bảo ứng dụng Flask xử lý proxy từ Render
+app.wsgi_app = ProxyFix(app.wsgi_app)
+
+# Tăng timeout của ứng dụng (nếu cần)
+import signal
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Request timed out!")
+
+signal.signal(signal.SIGALRM, timeout_handler)
+
+@app.before_request
+def before_request():
+    signal.alarm(300)
+
+@app.after_request
+def after_request(response):
+    signal.alarm(0)
+    return response
 
 @app.route('/calculate-bmr', methods=['POST'])
 def calculate_bmr_route():
