@@ -1,6 +1,0 @@
-node_modules
-# .gitignore
-serviceAccountKey.json
-python_backend/myenv
-python_backend/__pycache__/
-11
