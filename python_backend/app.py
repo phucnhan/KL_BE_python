@@ -101,4 +101,4 @@ def get_nutrition_plans(uid):
         return jsonify(error=f"Failed to fetch nutrition plans: {str(e)}"), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001, ssl_context=('cert.pem', 'key.pem'))
