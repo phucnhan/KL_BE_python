@@ -8,15 +8,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # Allow CORS for all origins
 
-@app.before_request
-def before_request():
-    signal.alarm(300)
-
-@app.after_request
-def after_request(response):
-    signal.alarm(0)
-    return response
-
 @app.route('/calculate-bmr', methods=['POST'])
 def calculate_bmr_route():
     user = request.json
@@ -48,37 +39,39 @@ def generate_plan_route():
         data = request.json
         uid = data.get('uid')
 
-        print(f"Received request for UID: {uid}")  # In UID ra log
+        print(f"Received request for UID: {uid}")
 
         user = fetch_user_data(uid)
-        print(f"User data: {user}")  # In dữ liệu user ra log
+        print(f"User data: {user}")
 
         # Load nutrient data từ CSV
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         CSV_PATH = os.path.join(BASE_DIR, '..', 'data', 'NutrientValues.csv')
         nutrient_data = pd.read_csv(CSV_PATH)
-        print("Loaded nutrient data successfully")  # Xác nhận đã load CSV
+        print("Loaded nutrient data successfully")
 
         # Tạo kế hoạch dinh dưỡng
         plan = generate_plan_with_foods(user, uid, nutrient_data)
-        print("Generated nutrition plan")  # Xác nhận đã tạo kế hoạch
+        print("Generated nutrition plan")
 
-        # Xóa kế hoạch cũ trước khi lưu kế hoạch mới
+        # Xóa kế hoạch cũ nếu có
         user_ref = db.collection('usersdata').document(uid).collection('nutritionPlans')
-        old_plans = user_ref.stream()
-        for plan_doc in old_plans:
-            user_ref.document(plan_doc.id).delete()
-        print("Deleted old nutrition plans")  # Xác nhận đã xóa kế hoạch cũ
+        old_plans = list(user_ref.stream())
+
+        if old_plans:
+            for plan_doc in old_plans:
+                user_ref.document(plan_doc.id).delete()
+            print("Deleted old nutrition plans")  
 
         # Lưu kế hoạch mới vào Firestore
         for day_plan in plan:
             user_ref.add(day_plan)
 
-        print("Saved new nutrition plan to Firestore")  # Xác nhận đã lưu kế hoạch mới
+        print("Saved new nutrition plan to Firestore")
 
         return jsonify(success=True, plan=plan)
     except Exception as e:
-        print(f"Error in generate-plan: {str(e)}")  # In lỗi ra log
+        print(f"Error in generate-plan: {str(e)}")
         return jsonify(error=str(e)), 500
 
 @app.route('/test-fetch-user/<uid>', methods=['GET'])
@@ -94,14 +87,13 @@ def test_fetch_user(uid):
 @app.route('/api/user-data/<uid>/nutritionPlans', methods=['GET'])
 def get_nutrition_plans(uid):
     try:
-        # Lấy reference đến nutritionPlans collection trong Firestore
         plans_ref = db.collection('usersdata').document(uid).collection('nutritionPlans')
         docs = plans_ref.stream()
 
-        # Duyệt qua tất cả các document và tạo danh sách
-        plans = []
-        for doc in docs:
-            plans.append(doc.to_dict())
+        plans = [doc.to_dict() for doc in docs]
+
+        if not plans:
+            return jsonify(message="No nutrition plans found"), 204  # Trả về 204 nếu không có dữ liệu
 
         return jsonify(plans=plans), 200
     except Exception as e:
