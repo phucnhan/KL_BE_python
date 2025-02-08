@@ -2,8 +2,12 @@ from flask import Flask, request, jsonify
 from ai_models import fetch_user_data, calculate_bmr, calculate_tdee, create_nutrition_plan, generate_plan_with_foods
 from firebase_config import db
 import pandas as pd
+import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Bật CORS
+
 
 @app.route('/calculate-bmr', methods=['POST'])
 def calculate_bmr_route():
@@ -34,8 +38,12 @@ def generate_plan_route():
         uid = data['uid']
         user = fetch_user_data(uid)
 
-        # Load nutrient data from CSV
-        nutrient_data = pd.read_csv('src/data/NutrientValues.csv')
+        # Lấy đường dẫn tuyệt đối
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        CSV_PATH = os.path.join(BASE_DIR, "data/NutrientValues.csv")
+
+        nutrient_data = pd.read_csv(CSV_PATH)
+
 
         # Generate the plan with foods
         plan = generate_plan_with_foods(user, uid, nutrient_data)
@@ -53,4 +61,5 @@ def test_fetch_user(uid):
         return jsonify(error=str(e)), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    PORT = int(os.environ.get("PORT", 5000))  # Render sẽ tự cấp PORT
+    app.run(host='0.0.0.0', port=PORT)
